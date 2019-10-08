@@ -157,11 +157,11 @@ def mine():
     proof = blockchain.proof_of_work(last_block)
 
     # We must receive a reward for finding the proof.
-    transaction = {
+    blockchain.new_transaction(
         'sender': "0",
         'recipient': node_identifier,
         'amount': 1
-    }
+    )
     # The sender is "0" to signify that this node has mine a new coin
     # The recipient is the current node, it did the mining!
     # The amount is 1 coin as a reward for mining the next block
