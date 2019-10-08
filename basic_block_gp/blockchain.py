@@ -129,10 +129,14 @@ class Blockchain(object):
             print(f'{block}')
             print("\n-------------------\n")
             # Check that the hash of the block is correct
-            # TODO: Return false if hash isn't correct
+            prev_hash = self.hash(prev_block)
+            if prev_hash != block['previous_hash']:
+                return False
 
             # Check that the Proof of Work is correct
-            # TODO: Return false if proof isn't correct
+            block_string = json.dumps(prev_block, sort_keys=True)
+            if not self.valid_proof(block_string, block['proof']):
+                return False
 
             prev_block = block
             current_index += 1
@@ -158,9 +162,9 @@ def mine():
 
     # We must receive a reward for finding the proof.
     blockchain.new_transaction(
-        'sender': "0",
-        'recipient': node_identifier,
-        'amount': 1
+        sender="0",
+        recipient=node_identifier,
+        amount=1
     )
     # The sender is "0" to signify that this node has mine a new coin
     # The recipient is the current node, it did the mining!
@@ -207,6 +211,13 @@ def full_chain():
     }
     return jsonify(response), 200
 
+@app.route('/validate_chain', methods=['GET'])
+def validate_chain():
+    valid = blockchain.valid_chain(blockchain.chain)
+    response = {
+        "valid": valid
+    }
+    return jsonify(response), 200
 
 # Run the program on port 5000
 if __name__ == '__main__':
