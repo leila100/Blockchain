@@ -135,22 +135,29 @@ class Blockchain(object):
 app = Flask(__name__)
 
 # Generate a globally unique address for this node
-node_identifier = str(uuid4()).replace('-', '')
+# node_identifier = str(uuid4()).replace('-', '')
 
 # Instantiate the Blockchain
 blockchain = Blockchain()
 
 
-@app.route('/mine', methods=['GET'])
+@app.route('/mine', methods=['POST'])
 def mine():
-    # We run the proof of work algorithm to get the next proof...
+    values = request.get_json()
+    required = ['proof', 'id']
+    if not all(k in values for k in required):
+        return 'Missing values', 400
+ 
+    # check validity of proof
     last_block = blockchain.last_block
-    proof = blockchain.proof_of_work(last_block)
+    block_string = json.dumps(last_block, sort_keys=True)
+    if not blockchain.valid_proof(block_string, values['proof']):
+        return 'Proof not valid', 400
 
     # We must receive a reward for finding the proof.
     blockchain.new_transaction(
         sender="0",
-        recipient=node_identifier,
+        recipient=values['id'],
         amount=1
     )
     # The sender is "0" to signify that this node has mine a new coin
@@ -159,7 +166,7 @@ def mine():
 
     # Forge the new Block by adding it to the chain
     previous_hash = blockchain.hash(last_block)
-    block = blockchain.new_block(proof, previous_hash)
+    block = blockchain.new_block(values['proof'], previous_hash)
 
     # Send a response with the new block
     response = {
@@ -198,6 +205,7 @@ def full_chain():
     }
     return jsonify(response), 200
 
+
 @app.route('/validate_chain', methods=['GET'])
 def validate_chain():
     valid = blockchain.valid_chain(blockchain.chain)
@@ -206,10 +214,12 @@ def validate_chain():
     }
     return jsonify(response), 200
 
+
 @app.route('/last_block', methods=['GET'])
-def last_block():
+def last():
+    last_block = blockchain.last_block
     response = {
-        'last_block': blockchain.last_block
+        'last_block': last_block
     }
     return jsonify(response), 200
 
