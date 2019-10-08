@@ -63,8 +63,6 @@ class Blockchain(object):
         :param block": <dict> Block
         "return": <str>
         """
-
-
         # json.dumps converts json into a string
         # hashlib.sha246 is used to createa hash
         # It requires a `bytes-like` object, which is what
@@ -155,16 +153,22 @@ blockchain = Blockchain()
 @app.route('/mine', methods=['GET'])
 def mine():
     # We run the proof of work algorithm to get the next proof...
-    proof = blockchain.proof_of_work()
+    last_block = blockchain.last_block
+    proof = blockchain.proof_of_work(last_block)
 
     # We must receive a reward for finding the proof.
-    # TODO:
+    transaction = {
+        'sender': "0",
+        'recipient': node_identifier,
+        'amount': 1
+    }
     # The sender is "0" to signify that this node has mine a new coin
     # The recipient is the current node, it did the mining!
     # The amount is 1 coin as a reward for mining the next block
 
     # Forge the new Block by adding it to the chain
-    # TODO
+    previous_hash = blockchain.hash(last_block)
+    block = blockchain.new_block(proof, previous_hash)
 
     # Send a response with the new block
     response = {
