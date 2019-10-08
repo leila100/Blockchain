@@ -92,9 +92,11 @@ class Blockchain(object):
         zeroes
         :return: A valid proof for the provided block
         """
-        # TODO
-        pass
-        # return proof
+        proof = 0
+        block_string = json.dumps(block, sort_keys=True)
+        while not self.valid_proof(block_string, proof):
+            proof += 1
+        return proof
 
     @staticmethod
     def valid_proof(block_string, proof):
@@ -108,9 +110,8 @@ class Blockchain(object):
         correct number of leading zeroes.
         :return: True if the resulting hash is a valid proof, False otherwise
         """
-        # TODO
-        pass
-        # return True or False
+        hash = hashlib.sha256((f"{block_string}{proof}").encode()).hexdigest()
+        return hash[:4] == "0000"
 
     def valid_chain(self, chain):
         """
