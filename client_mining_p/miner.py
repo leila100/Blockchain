@@ -2,7 +2,7 @@ import hashlib
 import json
 import requests
 from uuid import uuid4
-
+import time
 import sys
 
 def valid_proof(block_string, proof):
@@ -36,21 +36,24 @@ if __name__ == '__main__':
     coins_mined = 0
     # Run forever until interrupted
     coins = 0
+    node_identifier = str(uuid4()).replace('-', '')
     while True:
         # Get the last block from the server and generate a new proof
+        print("Starting the mining")
+        start_time = time.time()
         response = requests.get(f'{node}/last_block')
         block = response.json()['last_block']
         new_proof = get_proof(block)
         print(f"proof: {new_proof}")
 
         # send proof to the server to build a new block
-        node_identifier = str(uuid4()).replace('-', '')
         data = {'proof': new_proof, 'id': node_identifier}
         res = requests.post(url=f'{node}/mine', json=data)
         # If block is created, add one coin
         if res.status_code == 200:
+            end_time = time.time() 
             coins += 1
-            print(f"{res.json()['message']}. Get one more coin! Total: {coins}")
+            print(f"{res.json()['message']}. Get one more coin! Total: {coins} - Done in {end_time-start_time} seconds.")
         else:
             print(res.text)
 
