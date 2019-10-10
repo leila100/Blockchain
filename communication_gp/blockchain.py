@@ -4,7 +4,7 @@ from time import time
 from uuid import uuid4
 import sys
 from flask import Flask, jsonify, request
-
+import requests
 
 class Blockchain(object):
     def __init__(self):
@@ -142,6 +142,15 @@ class Blockchain(object):
 
     def register_node(self, node):
         self.nodes.add(node)
+    
+    def allert_nodes(self, block):
+        for node in self.nodes:
+            response = requests.post(node + '/block/new', json={'block': block})
+            if response.status_code != 200:
+                print(f'Something went wrong broadcasting to {node}')
+            else:
+                print(f"Block broadcasted to node {node}")
+
 
 # Instantiate our Node
 app = Flask(__name__)
@@ -179,6 +188,9 @@ def mine():
     # Forge the new Block by adding it to the chain
     previous_hash = blockchain.hash(last_block)
     block = blockchain.new_block(values['proof'], previous_hash)
+
+    # Let all the other nodes know that a new block has been created
+    blockchain.allert_nodes(block)
 
     # Send a response with the new block
     response = {
@@ -247,20 +259,37 @@ def new_block():
     if not all(k in values for k in required):
         return 'Missing Values', 400
 
-    # TODO: Verify that the sender is one of our peers
-
-    # TODO: Check that the new block index is 1 higher than our last block
-    # that it has a valid proof
-
-    # TODO: Otherwise, check for consensus
-    # Don't forget to send a response before asking for the full
-    # chain from a server awaiting a response.
-
-    return response, 200
+    new_block = values['block']
+    last_block = blockchain.last_block
+    # Check that the new block index is 1 higher than our last block
+    if new_block['index'] == last_block['index'] + 1:
+        # check that the new block 'previous_hash' is same as last_block hashed
+        if blockchain.hash(last_block) == new_block['previous_hash']:
+            # check that it has a valid proof
+            block_string = json.dumps(last_block, sort_keys=True)
+            if blockchain.valid_proof(block_string, new_block['proof']):
+                # new block is valid, add it to the chain
+                blockchain.chain.append(new_block)
+                response = {
+                    'message': "New block added to chain"
+                }
+            else:
+                response = {
+                    'message': "New block has invalid proof"
+                }
+        else:
+            response = {
+                'message': "New block has invalid previous hash"
+            }
+    else:
+        # TODO: Otherwise, check for consensus
+        response = {
+            'message': "New block has an invalid index. Update chain."
+        }
+    return jsonify(response), 200
 
 @app.route('/nodes/register', methods=['POST'])
 def register_nodes():
-
     values = request.get_json()
     nodes = values.get('nodes')
     if nodes is None:
@@ -275,10 +304,6 @@ def register_nodes():
     }
     return jsonify(response), 201
 
-
-# TODO: Get rid of the previous if __main__ and use this so we can change
-# ports via the command line.  Note that this is not robust and will
-# not catch errors
 if __name__ == '__main__':
     if len(sys.argv) > 1:
         port = int(sys.argv[1])
