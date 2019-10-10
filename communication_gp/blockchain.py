@@ -6,6 +6,7 @@ import sys
 from flask import Flask, jsonify, request
 import requests
 
+
 class Blockchain(object):
     def __init__(self):
         self.chain = []
@@ -142,7 +143,7 @@ class Blockchain(object):
 
     def register_node(self, node):
         self.nodes.add(node)
-    
+
     def allert_nodes(self, block):
         for node in self.nodes:
             response = requests.post(node + '/block/new', json={'block': block})
@@ -178,7 +179,7 @@ def mine():
     required = ['proof', 'id']
     if not all(k in values for k in required):
         return 'Missing values', 400
- 
+
     # check validity of proof
     last_block = blockchain.last_block
     block_string = json.dumps(last_block, sort_keys=True)
