@@ -146,10 +146,20 @@ class Blockchain(object):
     def allert_nodes(self, block):
         for node in self.nodes:
             response = requests.post(node + '/block/new', json={'block': block})
-            if response.status_code != 200:
-                print(f'Something went wrong broadcasting to {node}')
-            else:
-                print(f"Block broadcasted to node {node}")
+            message = response.json()['message']
+            print(f'Block broadcasted to {node}: {message}')
+
+    def get_updated_chain(self):
+        longest_chain = self.chain
+        for node in self.nodes:
+            response = requests.get(node + '/chain')
+            node_chain = response.json()['chain']
+            if self.valid_chain(node_chain):
+                if len(node_chain) > longest_chain:
+                    longest_chain = node_chain
+        if longest_chain is not self.chain:
+            self.chain = longest_chain
+            print(f"Chain has been changed to {longest_chain}")
 
 
 # Instantiate our Node
@@ -282,11 +292,12 @@ def new_block():
                 'message': "New block has invalid previous hash"
             }
     else:
-        # TODO: Otherwise, check for consensus
+        blockchain.get_updated_chain()
         response = {
-            'message': "New block has an invalid index. Update chain."
+            'message': "New block has an invalid index. Updated chain."
         }
     return jsonify(response), 200
+
 
 @app.route('/nodes/register', methods=['POST'])
 def register_nodes():
