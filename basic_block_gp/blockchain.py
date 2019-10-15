@@ -63,8 +63,6 @@ class Blockchain(object):
         :param block": <dict> Block
         "return": <str>
         """
-
-
         # json.dumps converts json into a string
         # hashlib.sha246 is used to createa hash
         # It requires a `bytes-like` object, which is what
@@ -92,9 +90,11 @@ class Blockchain(object):
         zeroes
         :return: A valid proof for the provided block
         """
-        # TODO
-        pass
-        # return proof
+        proof = 0
+        block_string = json.dumps(block, sort_keys=True)
+        while not self.valid_proof(block_string, proof):
+            proof += 1
+        return proof
 
     @staticmethod
     def valid_proof(block_string, proof):
@@ -108,9 +108,8 @@ class Blockchain(object):
         correct number of leading zeroes.
         :return: True if the resulting hash is a valid proof, False otherwise
         """
-        # TODO
-        pass
-        # return True or False
+        hash = hashlib.sha256((f"{block_string}{proof}").encode()).hexdigest()
+        return hash[:4] == "0000"
 
     def valid_chain(self, chain):
         """
@@ -130,10 +129,14 @@ class Blockchain(object):
             print(f'{block}')
             print("\n-------------------\n")
             # Check that the hash of the block is correct
-            # TODO: Return false if hash isn't correct
+            prev_hash = self.hash(prev_block)
+            if prev_hash != block['previous_hash']:
+                return False
 
             # Check that the Proof of Work is correct
-            # TODO: Return false if proof isn't correct
+            block_string = json.dumps(prev_block, sort_keys=True)
+            if not self.valid_proof(block_string, block['proof']):
+                return False
 
             prev_block = block
             current_index += 1
@@ -154,16 +157,22 @@ blockchain = Blockchain()
 @app.route('/mine', methods=['GET'])
 def mine():
     # We run the proof of work algorithm to get the next proof...
-    proof = blockchain.proof_of_work()
+    last_block = blockchain.last_block
+    proof = blockchain.proof_of_work(last_block)
 
     # We must receive a reward for finding the proof.
-    # TODO:
+    blockchain.new_transaction(
+        sender="0",
+        recipient=node_identifier,
+        amount=1
+    )
     # The sender is "0" to signify that this node has mine a new coin
     # The recipient is the current node, it did the mining!
     # The amount is 1 coin as a reward for mining the next block
 
     # Forge the new Block by adding it to the chain
-    # TODO
+    previous_hash = blockchain.hash(last_block)
+    block = blockchain.new_block(proof, previous_hash)
 
     # Send a response with the new block
     response = {
@@ -197,10 +206,18 @@ def new_transaction():
 @app.route('/chain', methods=['GET'])
 def full_chain():
     response = {
-        # TODO: Return the chain and its current length
+        "chain": blockchain.chain,
+        "length": len(blockchain.chain)
     }
     return jsonify(response), 200
 
+@app.route('/validate_chain', methods=['GET'])
+def validate_chain():
+    valid = blockchain.valid_chain(blockchain.chain)
+    response = {
+        "valid": valid
+    }
+    return jsonify(response), 200
 
 # Run the program on port 5000
 if __name__ == '__main__':
